@@ -5,40 +5,57 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 export async function POST(request) {
   try {
-    // আমরা এখন text অথবা image (base64) দুটোই রিসিভ করতে পারি
-    const { text, image } = await request.json();
+    // আমরা এখন text, image, অথবা url রিসিভ করতে পারি
+    const { text, image, url } = await request.json();
 
-    if (!text && !image) {
+    if (!text && !image && !url) {
       return NextResponse.json({ error: "No content provided" }, { status: 400 });
     }
 
-    // আমাদের সেই সুপার ফাস্ট মডেল
+    // মডেল সেটআপ (তোমার লেটেস্ট মডেল)
     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
-    // প্রম্পট তৈরি করা
     let promptParts = [
-      `Extract job details from the input (text or image) and return ONLY a JSON object.
+      `Extract job details from the input and return ONLY a JSON object.
        Do not use Markdown formatting.
        Fields: title, company, location, salary, type, description (max 2 sentences).
-       If missing, set to null.`
+       If missing, set to null.
+       Note: If the input is HTML, ignore script tags and focus on visible text.`
     ];
 
-    // যদি ছবি থাকে, সেটা প্রসেস করো
-    if (image) {
-      // ছবিটা Base64 ফরম্যাটে আসছে, সেটা Gemini-র বোধ্যগম্য করছি
+    // ১. যদি লিংক (URL) থাকে -> ZenRows দিয়ে HTML আনবো
+    if (url) {
+      const zenRowsKey = process.env.ZENROWS_API_KEY;
+      // ZenRows এর মাধ্যমে রিকোয়েস্ট পাঠাচ্ছি
+      const proxyUrl = `https://api.zenrows.com/v1/?apikey=${zenRowsKey}&url=${encodeURIComponent(url)}&js_render=true`;
+      
+      const response = await fetch(proxyUrl);
+      if (!response.ok) {
+        throw new Error("Failed to fetch URL content via ZenRows");
+      }
+      
+      const html = await response.text();
+      // পুরো HTML Gemini-কে দিয়ে দিচ্ছি (Flash মডেল অনেক বড় ডাটা নিতে পারে)
+      promptParts.push(`HTML Content of the job page: ${html}`);
+    }
+    
+    // ২. যদি ছবি (Image) থাকে
+    else if (image) {
       const imagePart = {
         inlineData: {
-          data: image.split(",")[1], // "data:image/png;base64," অংশটা বাদ দিচ্ছি
+          data: image.split(",")[1],
           mimeType: "image/png",
         },
       };
       promptParts.push(imagePart);
     } 
-    // যদি টেক্সট থাকে
+    
+    // ৩. যদি টেক্সট (Text) থাকে
     else if (text) {
       promptParts.push(text);
     }
 
+    // AI প্রসেসিং
     const result = await model.generateContent(promptParts);
     const response = await result.response;
     let outputText = response.text();
