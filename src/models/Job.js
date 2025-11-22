@@ -1,35 +1,58 @@
-// src/models/Job.js
 import mongoose from 'mongoose';
 
 const JobSchema = new mongoose.Schema({
-  // Basic Info (AI Extracted)
-  title: { type: String, required: [true, 'Please provide a job title'],},
-  company: { type: String},
-  location: { type: String },
-  salary: { type: String },
-  description: { type: String },
+  // --- Basic Info ---
+  title: {
+    type: String,
+    required: [true, 'Please provide a job title'],
+  },
+  company: {
+    type: String,
+    // required: [true, 'Please provide a company name'],
+  },
+  location: {
+    type: String,
+  },
+  salary: {
+    type: String,
+  },
+  description: {
+    type: String,
+  },
   
-  // Tracking Details
-  postLink: { type: String },
-  platform: { type: String, default: 'Unknown' }, // LinkedIn, BDJobs
-  applicationDate: { type: Date, default: Date.now },
-  status: { 
-    type: String, 
-    enum: ['Applied', 'Screening', 'Interview', 'Offer', 'Rejected'], 
-    default: 'Applied' 
+  // --- Tracking Info ---
+  postLink: { // Job Link
+    type: String,
+  },
+  platform: { // LinkedIn, BDJobs etc.
+    type: String,
+    default: 'Unknown'
+  },
+  status: { // Current Status
+    type: String,
+    enum: ['Applied', 'Screening', 'Interview', 'Offer', 'Rejected'],
+    default: 'Applied',
+  },
+  applicationDate: { // Koto tarikhe apply korecho
+    type: Date,
+    default: Date.now,
   },
 
-  // Interview & Contact
-  interviewDate: { type: Date },
-  contactPerson: { type: String }, // HR Name
-  contactEmail: { type: String }, // Phone/Email
+  // --- NEW FIELDS (Viva/Interview & Notes) ---
+  interviewDate: { // Eitai Viva Date hisebe kaj korbe
+    type: Date,
+  },
+  notes: { // Tomar personal note
+    type: String,
+  },
+  salaryExpectation: {
+    type: String,
+  },
   
-  // Personal Feedback
-  salaryExpectation: { type: String },
-  feedback: { type: String },
-  notes: { type: String },
-  
-  createdAt: { type: Date, default: Date.now },
+  createdAt: {
+    type: Date,
+    default: Date.now,
+  },
 });
 
 export default mongoose.models.Job || mongoose.model('Job', JobSchema);
