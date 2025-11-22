@@ -18,15 +18,15 @@ export async function POST(request) {
     let promptParts = [
       `Extract job details from the input and return ONLY a JSON object.
        Do not use Markdown formatting.
-       Fields: title, company, location, salary, type, description (max 2 sentences).
+       Fields: title, company, location, salary, description (max 2 sentences).
        If missing, set to null.
        Note: If the input is HTML, ignore script tags and focus on visible text.`
     ];
 
-    // ১. যদি লিংক (URL) থাকে -> ZenRows দিয়ে HTML আনবো
+    // ১. যদি লিংক (URL) থাকে -> ZenRows দিয়ে HTML আনবো
     if (url) {
       const zenRowsKey = process.env.ZENROWS_API_KEY;
-      // ZenRows এর মাধ্যমে রিকোয়েস্ট পাঠাচ্ছি
+      // ZenRows এর মাধ্যমে রিকোয়েস্ট পাঠাচ্ছি
       const proxyUrl = `https://api.zenrows.com/v1/?apikey=${zenRowsKey}&url=${encodeURIComponent(url)}&js_render=true`;
       
       const response = await fetch(proxyUrl);
@@ -35,7 +35,7 @@ export async function POST(request) {
       }
       
       const html = await response.text();
-      // পুরো HTML Gemini-কে দিয়ে দিচ্ছি (Flash মডেল অনেক বড় ডাটা নিতে পারে)
+      // পুরো HTML Gemini-কে দিয়ে দিচ্ছি
       promptParts.push(`HTML Content of the job page: ${html}`);
     }
     
@@ -62,7 +62,27 @@ export async function POST(request) {
 
     // ক্লিনআপ
     outputText = outputText.replace(/```json/g, "").replace(/```/g, "").trim();
+    
+    // JSON পার্স করা
     const jobData = JSON.parse(outputText);
+
+    // --- নতুন লজিক শুরু (Platform & Link Detection) ---
+    if (url) {
+      jobData.postLink = url; // লিংকটা ডাটাবেসে সেভ করার জন্য সেট করলাম
+      
+      // লিংক দেখে প্ল্যাটফর্ম চেনার চেষ্টা
+      const lowerUrl = url.toLowerCase();
+      if (lowerUrl.includes("linkedin")) jobData.platform = "LinkedIn";
+      else if (lowerUrl.includes("bdjobs")) jobData.platform = "BDJobs";
+      else if (lowerUrl.includes("glassdoor")) jobData.platform = "Glassdoor";
+      else if (lowerUrl.includes("facebook")) jobData.platform = "Facebook";
+      else jobData.platform = "Web";
+    } else if (image) {
+      jobData.platform = "Screenshot";
+    } else {
+      jobData.platform = "Text Paste";
+    }
+    // --- নতুন লজিক শেষ ---
 
     return NextResponse.json({ success: true, data: jobData });
 
