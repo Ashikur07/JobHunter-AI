@@ -11,38 +11,44 @@ export async function POST(request) {
   try {
     const body = await request.json();
     
-    // টেলিগ্রামের মেসেজ চেক করা
     if (body.message) {
       const { chat, text } = body.message;
       const chatId = chat.id;
 
-      // ১. টেক্সট বা লিংক হ্যান্ডেল করা
       if (text) {
-        // ইউজারকে বলি অপেক্ষা করতে
+        // ১. ইউজারকে ওয়েটিং মেসেজ দেওয়া
         await bot.sendMessage(chatId, "🔎 Analyzing your job link/text... Please wait.");
 
         let jobData;
-        // চেক করি এটা লিংক কিনা
+        
+        // ২. চেক করি এটা লিংক কিনা
         if (text.startsWith("http")) {
+          // লিংক হলে ZenRows দিয়ে ডাটা আনবে (lib/gemini.js ব্যবহার করে)
           jobData = await extractJobData({ url: text });
+          
+          // --- নতুন লজিক: লিংক এবং প্ল্যাটফর্ম সেট করা ---
+          jobData.postLink = text;
+          
+          const lowerLink = text.toLowerCase();
+          if (lowerLink.includes("linkedin")) jobData.platform = "LinkedIn";
+          else if (lowerLink.includes("bdjobs")) jobData.platform = "BDJobs";
+          else if (lowerLink.includes("glassdoor")) jobData.platform = "Glassdoor";
+          else jobData.platform = "Web (Telegram)";
+          
         } else {
+          // টেক্সট হলে সরাসরি প্রসেস
           jobData = await extractJobData({ text: text });
+          jobData.platform = "Telegram Text";
         }
 
         if (jobData) {
-          // ২. ডাটাবেসে সেভ করা (Telegram ID সহ)
+          // ৩. ডাটাবেসে সেভ করা
           await dbConnect();
           
-          // ফিউচার প্ল্যানের জন্য telegramId সেভ রাখছি
-          const newJob = await Job.create({
-            ...jobData,
-            platform: "Telegram Bot",
-            // userEmail: "future@email.com" (পরে এখানে রিয়েল ইমেইল আসবে)
-            // telegramId: chatId (তুমি চাইলে মডেলে এই ফিল্ড অ্যাড করতে পারো)
-          });
+          const newJob = await Job.create(jobData);
 
-          // ৩. সাকসেস মেসেজ
-          const reply = `✅ **Job Saved Successfully!**\n\n📌 **Title:** ${newJob.title}\n🏢 **Company:** ${newJob.company}\n💰 **Salary:** ${newJob.salary || "N/A"}\n\nCheck your dashboard!`;
+          // ৪. সাকসেস মেসেজ পাঠানো
+          const reply = `✅ **Job Saved!**\n\n📌 **Title:** ${newJob.title}\n🏢 **Company:** ${newJob.company}\n🔗 **Platform:** ${newJob.platform}\n\nCheck your dashboard!`;
           await bot.sendMessage(chatId, reply, { parse_mode: "Markdown" });
         }
       } else {
