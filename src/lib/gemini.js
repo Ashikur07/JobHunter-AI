@@ -4,82 +4,97 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 export async function extractJobData({ text, image, url }) {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    // ⚠️ ফিক্স: 'gemini-2.0-flash' এর বদলে 'gemini-1.5-flash' ব্যবহার করছি।
+    // 1.5-flash এর ফ্রি লিমিট অনেক বেশি।
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
     let promptParts = [
-      `Extract job details from the input and return ONLY a JSON object.
-       Do not use Markdown formatting.
+      `Extract job details and return ONLY a JSON object. No Markdown.
        Fields: title, company, location, salary, description (max 2 sentences).
-       If missing, set to null.
-       Note: If the input is HTML, ignore script tags and focus on visible text.`
+       If missing, set to null.`
     ];
 
-    // ১. যদি লিংক (URL) থাকে -> ZenRows দিয়ে HTML আনবো
+    // ১. লিংক হ্যান্ডেল করা
     if (url) {
-      const zenRowsKey = process.env.ZENROWS_API_KEY;
-      if (!zenRowsKey) throw new Error("ZenRows API Key missing");
-
-      // লিংকের স্পেশাল ক্যারেক্টার হ্যান্ডেল করার জন্য encodeURIComponent ব্যবহার করছি
-      const proxyUrl = `https://api.zenrows.com/v1/?apikey=${zenRowsKey}&url=${encodeURIComponent(url)}&js_render=true&premium_proxy=true`;
-      
-      console.log("Fetching URL via ZenRows:", url); // ডিবাগিংয়ের জন্য
-      
-      const response = await fetch(proxyUrl);
-      if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(`ZenRows Error: ${response.status} - ${errText}`);
+      if (!process.env.ZENROWS_API_KEY) {
+        return { 
+          title: "Job Link (Pending Analysis)", 
+          company: "Unknown", 
+          postLink: url,
+          description: "ZenRows API Key missing in Vercel.",
+          platform: "Web Link"
+        };
       }
       
-      const html = await response.text();
-      promptParts.push(`HTML Content: ${html}`);
-    }
-    
+      // ZenRows কনফিগারেশন
+      const proxyUrl = `https://api.zenrows.com/v1/?apikey=${process.env.ZENROWS_API_KEY}&url=${encodeURIComponent(url)}&js_render=true&premium_proxy=true`;
+      
+      try {
+        const response = await fetch(proxyUrl);
+        if (response.ok) {
+          const html = await response.text();
+          promptParts.push(`HTML Content: ${html}`);
+        } else {
+          console.warn("ZenRows fetch failed, trying generic extraction.");
+          promptParts.push(`Job Link: ${url}`); // HTML না পেলে শুধু লিংক পাঠাবো
+        }
+      } catch (err) {
+        console.error("ZenRows Error:", err);
+        promptParts.push(`Job Link: ${url}`);
+      }
+    } 
     // ২. ছবি হ্যান্ডেল করা
     else if (image) {
-      // যদি বেস৬৪ হেডার থাকে (data:image/...) সেটা বাদ দিচ্ছি
       const base64Data = image.includes("base64,") ? image.split(",")[1] : image;
-      
-      const imagePart = {
-        inlineData: {
-          data: base64Data,
-          mimeType: "image/png",
-        },
-      };
-      promptParts.push(imagePart);
+      promptParts.push({ inlineData: { data: base64Data, mimeType: "image/png" } });
     } 
-    
     // ৩. টেক্সট হ্যান্ডেল করা
     else if (text) {
       promptParts.push(text);
     }
 
-    // Gemini কে কল করা
+    // AI Request
     const result = await model.generateContent(promptParts);
     const response = await result.response;
     let outputText = response.text();
 
-    // ক্লিনআপ
+    // Clean JSON
     outputText = outputText.replace(/```json/g, "").replace(/```/g, "").trim();
-    const jobData = JSON.parse(outputText);
+    
+    // JSON Parse
+    try {
+      const data = JSON.parse(outputText);
+      
+      // Platform Logic
+      if (url) {
+        data.postLink = url;
+        if(url.includes('linkedin')) data.platform = 'LinkedIn';
+        else if(url.includes('bdjobs')) data.platform = 'BDJobs';
+        else data.platform = 'Web';
+      } else {
+        data.platform = image ? 'Screenshot' : 'Telegram Text';
+      }
+      return data;
 
-    // --- Platform & Link Detection Logic (একই জায়গায়) ---
-    if (url) {
-      jobData.postLink = url;
-      const lowerUrl = url.toLowerCase();
-      if (lowerUrl.includes("linkedin")) jobData.platform = "LinkedIn";
-      else if (lowerUrl.includes("bdjobs")) jobData.platform = "BDJobs";
-      else if (lowerUrl.includes("glassdoor")) jobData.platform = "Glassdoor";
-      else jobData.platform = "Web";
-    } else if (image) {
-      jobData.platform = "Screenshot";
-    } else {
-      jobData.platform = "Text Paste";
+    } catch (parseError) {
+      console.error("JSON Parse Error:", parseError);
+      return {
+        title: "Extracted Job (Needs Edit)",
+        company: "Unknown",
+        description: text ? text.substring(0, 100) : "Failed to parse AI response",
+        platform: "Error Fallback"
+      };
     }
 
-    return jobData;
-
   } catch (error) {
-    console.error("Gemini/ZenRows Logic Error:", error);
-    throw error; // এররটা পাস করে দিচ্ছি যাতে API বুঝতে পারে
+    console.error("Gemini API Fatal Error:", error);
+    // 429 বা অন্য এরর হলেও যেন বট ক্র্যাশ না করে, তাই ম্যানুয়াল ডাটা রিটার্ন করছি
+    return {
+      title: "Job Saved (AI Busy)",
+      company: "Check Later",
+      description: "AI Quota Exceeded or Error. Please edit details manually.",
+      postLink: url || "",
+      platform: "System Backup"
+    };
   }
 }
