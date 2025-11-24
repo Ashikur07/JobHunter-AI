@@ -4,9 +4,8 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 export async function extractJobData({ text, image, url }) {
   try {
-    // ⚠️ ফিক্স: 'gemini-2.0-flash' এর বদলে 'gemini-1.5-flash' ব্যবহার করছি।
-    // 1.5-flash এর ফ্রি লিমিট অনেক বেশি।
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    // ⚠️ ফিক্স: 'gemini-flash-latest' ব্যবহার করছি। এটা তোমার লিস্টে আছে।
+    const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
 
     let promptParts = [
       `Extract job details and return ONLY a JSON object. No Markdown.
@@ -26,7 +25,6 @@ export async function extractJobData({ text, image, url }) {
         };
       }
       
-      // ZenRows কনফিগারেশন
       const proxyUrl = `https://api.zenrows.com/v1/?apikey=${process.env.ZENROWS_API_KEY}&url=${encodeURIComponent(url)}&js_render=true&premium_proxy=true`;
       
       try {
@@ -35,8 +33,7 @@ export async function extractJobData({ text, image, url }) {
           const html = await response.text();
           promptParts.push(`HTML Content: ${html}`);
         } else {
-          console.warn("ZenRows fetch failed, trying generic extraction.");
-          promptParts.push(`Job Link: ${url}`); // HTML না পেলে শুধু লিংক পাঠাবো
+          promptParts.push(`Job Link: ${url}`);
         }
       } catch (err) {
         console.error("ZenRows Error:", err);
@@ -65,7 +62,6 @@ export async function extractJobData({ text, image, url }) {
     try {
       const data = JSON.parse(outputText);
       
-      // Platform Logic
       if (url) {
         data.postLink = url;
         if(url.includes('linkedin')) data.platform = 'LinkedIn';
@@ -87,12 +83,12 @@ export async function extractJobData({ text, image, url }) {
     }
 
   } catch (error) {
-    console.error("Gemini API Fatal Error:", error);
-    // 429 বা অন্য এরর হলেও যেন বট ক্র্যাশ না করে, তাই ম্যানুয়াল ডাটা রিটার্ন করছি
+    console.error("Gemini API Error:", error);
+    // সেফটি: এরর হলে ক্র্যাশ না করে ফলব্যাক ডাটা দেবে
     return {
       title: "Job Saved (AI Busy)",
       company: "Check Later",
-      description: "AI Quota Exceeded or Error. Please edit details manually.",
+      description: "Please edit details manually.",
       postLink: url || "",
       platform: "System Backup"
     };
