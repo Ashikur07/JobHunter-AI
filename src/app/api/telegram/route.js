@@ -5,60 +5,104 @@ import Job from "@/models/Job";
 import { extractJobData } from "@/lib/gemini";
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
-const bot = new TelegramBot(token);
+
+// ⚠️ ফিক্স: polling: false দেওয়া বাধ্যতামূলক Vercel এর জন্য
+const bot = new TelegramBot(token, { polling: false });
 
 export async function POST(request) {
   try {
     const body = await request.json();
     
+    // শুধু মেসেজ থাকলে প্রসেস করব (Edit বা অন্য কিছু না)
     if (body.message) {
-      const { chat, text } = body.message;
+      const { chat, text, photo } = body.message;
       const chatId = chat.id;
 
-      if (text) {
-        // ১. ইউজারকে ওয়েটিং মেসেজ দেওয়া
-        await bot.sendMessage(chatId, "🔎 Analyzing your job link/text... Please wait.");
+      try {
+        // --- ১. ছবি (Screenshot) হ্যান্ডেল করা ---
+        if (photo) {
+          await bot.sendMessage(chatId, "📸 Analyzing screenshot... This may take a few seconds.");
+          
+          // সবচেয়ে ক্লিয়ার ছবিটা নিলাম
+          const fileId = photo[photo.length - 1].file_id;
+          const fileLink = await bot.getFileLink(fileId);
+          
+          // ছবি ডাউনলোড করে Base64 করা
+          const imgRes = await fetch(fileLink);
+          const arrayBuffer = await imgRes.arrayBuffer();
+          const buffer = Buffer.from(arrayBuffer);
+          const base64Image = buffer.toString("base64");
 
-        let jobData;
-        
-        // ২. চেক করি এটা লিংক কিনা
-        if (text.startsWith("http")) {
-          // লিংক হলে ZenRows দিয়ে ডাটা আনবে (lib/gemini.js ব্যবহার করে)
-          jobData = await extractJobData({ url: text });
+          // Gemini দিয়ে ডাটা বের করা
+          const jobData = await extractJobData({ image: base64Image });
           
-          // --- নতুন লজিক: লিংক এবং প্ল্যাটফর্ম সেট করা ---
-          jobData.postLink = text;
-          
-          const lowerLink = text.toLowerCase();
-          if (lowerLink.includes("linkedin")) jobData.platform = "LinkedIn";
-          else if (lowerLink.includes("bdjobs")) jobData.platform = "BDJobs";
-          else if (lowerLink.includes("glassdoor")) jobData.platform = "Glassdoor";
-          else jobData.platform = "Web (Telegram)";
-          
-        } else {
-          // টেক্সট হলে সরাসরি প্রসেস
-          jobData = await extractJobData({ text: text });
-          jobData.platform = "Telegram Text";
-        }
-
-        if (jobData) {
-          // ৩. ডাটাবেসে সেভ করা
+          // সেভ করা
           await dbConnect();
-          
+          jobData.platform = "Telegram Screenshot";
           const newJob = await Job.create(jobData);
 
-          // ৪. সাকসেস মেসেজ পাঠানো
-          const reply = `✅ **Job Saved!**\n\n📌 **Title:** ${newJob.title}\n🏢 **Company:** ${newJob.company}\n🔗 **Platform:** ${newJob.platform}\n\nCheck your dashboard!`;
-          await bot.sendMessage(chatId, reply, { parse_mode: "Markdown" });
+          await bot.sendMessage(chatId, `✅ **Saved from Screenshot!**\n\n📌 Title: ${newJob.title}\n🏢 Company: ${newJob.company}`);
+          return NextResponse.json({ success: true });
         }
-      } else {
-        await bot.sendMessage(chatId, "Send me a Job Link or Description Text!");
+
+        // --- ২. কমান্ড হ্যান্ডেল করা ---
+        if (text) {
+          if (text === "/start") {
+            await bot.sendMessage(chatId, "👋 Welcome! Send me a Job Link, Text, or Screenshot to save it.");
+            return NextResponse.json({ success: true });
+          }
+
+          if (text === "/myjobs") {
+            await dbConnect();
+            const jobs = await Job.find().sort({ createdAt: -1 }).limit(5);
+            if (jobs.length === 0) {
+              await bot.sendMessage(chatId, "No jobs saved yet.");
+            } else {
+              let msg = "📋 **Last 5 Jobs:**\n";
+              jobs.forEach((job, i) => msg += `\n${i+1}. ${job.title} \n   (${job.company})`);
+              await bot.sendMessage(chatId, msg, { parse_mode: "Markdown" });
+            }
+            return NextResponse.json({ success: true });
+          }
+
+          if (text === "/today") {
+            await dbConnect();
+            const start = new Date();
+            start.setHours(0,0,0,0);
+            const jobs = await Job.find({ createdAt: { $gte: start } });
+            await bot.sendMessage(chatId, `📅 You saved **${jobs.length}** jobs today.`);
+            return NextResponse.json({ success: true });
+          }
+
+          // --- ৩. লিংক বা টেক্সট হ্যান্ডেল করা ---
+          await bot.sendMessage(chatId, "🔎 Analyzing... Please wait.");
+          
+          let jobData;
+          if (text.startsWith("http")) {
+             jobData = await extractJobData({ url: text });
+          } else {
+             jobData = await extractJobData({ text: text });
+             jobData.platform = "Telegram Text";
+          }
+
+          if (jobData) {
+            await dbConnect();
+            const newJob = await Job.create(jobData);
+            await bot.sendMessage(chatId, `✅ **Job Saved!**\n\n📌 ${newJob.title}\n🏢 ${newJob.company}`);
+          }
+        }
+
+      } catch (innerError) {
+        console.error("Processing Error:", innerError);
+        // ইউজারকে জানানো যে সমস্যা হয়েছে
+        await bot.sendMessage(chatId, "⚠️ Error processing your request. Please try again.");
       }
     }
 
     return NextResponse.json({ success: true });
+
   } catch (error) {
-    console.error("Telegram Error:", error);
+    console.error("Telegram API Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
