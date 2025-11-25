@@ -2,6 +2,10 @@ import mongoose from 'mongoose';
 
 const JobSchema = new mongoose.Schema({
   // --- Basic Info ---
+  userEmail: { 
+    type: String, 
+    required: true, index: true 
+  },
   title: {
     type: String,
     required: [true, 'Please provide a job title'],
