@@ -4,34 +4,35 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../auth/[...nextauth]/route";
 
-// ইউজার ডাটা আপডেট করা (PUT)
+// ১. ইউজার ডাটা আপডেট করা (PUT)
 export async function PUT(request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     await dbConnect();
-    const data = await request.json();
+    const data = await request.json(); // ফ্রন্টএন্ড থেকে ডাটা পাচ্ছি
 
-    // ইমেইল দিয়ে ইউজার খুঁজে আপডেট করা
+    // ডাটাবেসে আপডেট করছি
     const updatedUser = await User.findOneAndUpdate(
       { email: session.user.email },
       { 
         bio: data.bio,
         location: data.location,
         phone: data.phone,
-        links: data.links
+        links: data.links // এই লাইনটা জরুরি
       },
-      { new: true } // নতুন ডাটা ফেরত দেবে
+      { new: true } // আপডেটেড ডাটা ফেরত দেবে
     );
 
     return NextResponse.json({ success: true, data: updatedUser });
   } catch (error) {
+    console.error("Profile Update Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
-// ইউজার ডাটা নিয়ে আসা (GET)
+// ২. ইউজার ডাটা নিয়ে আসা (GET)
 export async function GET(request) {
   try {
     const session = await getServerSession(authOptions);
