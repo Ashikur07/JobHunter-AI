@@ -6,12 +6,10 @@ const UserSchema = new mongoose.Schema({
   password: { type: String },
   image: { type: String },
   
-  // --- নতুন ফিল্ডগুলো অবশ্যই থাকতে হবে ---
+  // প্রোফাইল ইনফো
   bio: { type: String, default: "" },
   location: { type: String, default: "" },
   phone: { type: String, default: "" },
-  
-  // লিংকগুলো একটা অবজেক্টের ভেতর থাকবে
   links: {
     linkedin: { type: String, default: "" },
     github: { type: String, default: "" },
@@ -19,7 +17,12 @@ const UserSchema = new mongoose.Schema({
     facebook: { type: String, default: "" }
   },
 
-  // ভেরিফিকেশন ফিল্ডস
+  // --- TELEGRAM BOT FIELDS (নতুন যোগ করা হলো) ---
+  telegramId: { type: String }, // ইউজারের টেলিগ্রাম আইডি
+  telegramVerifyCode: { type: String }, // ভেরিফিকেশন কোড (OTP)
+  telegramVerifyExpiry: { type: Date }, // কোডের মেয়াদ
+
+  // ওয়েবসাইট ভেরিফিকেশন
   isVerified: { type: Boolean, default: false },
   verifyToken: { type: String },
   verifyTokenExpiry: { type: Date },
