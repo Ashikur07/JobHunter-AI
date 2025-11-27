@@ -112,7 +112,25 @@ Once connected, just forward any **Job Link** or upload a **Screenshot**, and I 
           user.otpExpiry = undefined;
           await user.save();
 
-          await bot.sendMessage(chatId, `🎉 **Connected Successfully!**\n\nWelcome, **${user.name}**! 🌟\n\nNow you can:\n🔗 Send **Job Links**\n📸 Send **Screenshots**\n📝 Send **Text Descriptions**\n\nI will organize everything in your dashboard.`, { parse_mode: "Markdown" });
+          // 🎉 সাকসেস মেসেজ আপডেট করা হয়েছে (কমান্ড লিস্ট সহ)
+          const successMsg = `
+🎉 **Connected Successfully!**
+
+Welcome, **${user.name}**! 🌟
+
+✅ **You are ready to go!**
+Simply forward **Job Links** 🔗 or upload **Screenshots** 📸 here.
+
+👇 **Useful Commands:**
+🔹 \`/today\` - View today's saved jobs
+🔹 \`/myjobs\` - View last 5 jobs
+🔹 \`/me\` - Check profile info
+🔹 \`/disconnect\` - Logout from bot
+
+I will organize everything in your dashboard. 🚀
+          `;
+
+          await bot.sendMessage(chatId, successMsg, { parse_mode: "Markdown" });
           return NextResponse.json({ success: true });
         }
 
