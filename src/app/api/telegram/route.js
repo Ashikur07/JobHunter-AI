@@ -1,4 +1,3 @@
-// src/app/api/telegram/route.js
 import { NextResponse } from "next/server";
 import TelegramBot from "node-telegram-bot-api";
 import dbConnect from "@/lib/mongodb";
@@ -21,99 +20,176 @@ export async function POST(request) {
 
       await dbConnect();
 
-      // ১. চেক করি এই টেলিগ্রাম আইডি কোনো ইউজারের সাথে কানেক্টেড কিনা
+      // ১. চেক করি ইউজার কানেক্টেড কিনা
       const connectedUser = await User.findOne({ telegramChatId: chatId });
 
-      // --- 🔒 যদি কানেক্টেড না থাকে (UNAUTHENTICATED FLOW) ---
+      // --- 🔒 যদি কানেক্টেড না থাকে (GUEST FLOW) ---
       if (!connectedUser) {
         
+        // A. START COMMAND (Welcome Message)
+        if (text === "/start") {
+          const welcomeMsg = `
+🤖 **Welcome to JobHunter AI!** 👋
+
+I am your personal assistant to track job applications instantly.
+
+🔴 **Status:** Not Connected
+To save jobs, you need to link your website account first.
+
+👇 **How to Connect:**
+
+1️⃣ **Step 1:** Send your email
+Type: \`/connect your_email@example.com\`
+
+2️⃣ **Step 2:** Verify OTP
+Check your email for a code, then type:
+Type: \`/verify 123456\`
+
+-----------------------------
+Once connected, just forward any **Job Link** or upload a **Screenshot**, and I will save it to your dashboard! 🚀
+          `;
+          await bot.sendMessage(chatId, welcomeMsg, { parse_mode: "Markdown" });
+          return NextResponse.json({ success: true });
+        }
+
+        // B. CONNECT COMMAND
         if (text && text.startsWith("/connect")) {
-          // কমান্ড: /connect user@email.com
-          const email = text.split(" ")[1];
+          const parts = text.split(" ");
+          const email = parts[1];
           
           if (!email) {
-            await bot.sendMessage(chatId, "⚠️ Please provide your email.\nExample: `/connect your@email.com`", { parse_mode: "Markdown" });
+            await bot.sendMessage(chatId, "⚠️ **Missing Email!**\n\nPlease type your email after the command.\nExample:\n`/connect yourname@gmail.com`", { parse_mode: "Markdown" });
             return NextResponse.json({ success: true });
           }
 
           const user = await User.findOne({ email: email });
           if (!user) {
-            await bot.sendMessage(chatId, "❌ No account found with this email. Please register on the website first.");
+            await bot.sendMessage(chatId, "❌ **Account Not Found!**\n\nThis email is not registered on our website.\nPlease register first at our website.", { parse_mode: "Markdown" });
             return NextResponse.json({ success: true });
           }
 
-          // OTP জেনারেট করা
+          // OTP জেনারেট ও সেভ
           const otp = crypto.randomInt(100000, 999999).toString();
           user.otp = otp;
-          user.otpExpiry = Date.now() + 10 * 60 * 1000; // ১০ মিনিট মেয়াদ
+          user.otpExpiry = Date.now() + 10 * 60 * 1000; // ১০ মিনিট
           await user.save();
 
           // ইমেইল পাঠানো
+          await bot.sendMessage(chatId, "⏳ Sending verification code to your email...");
           const emailSent = await sendTelegramOTP(email, otp);
           
           if (emailSent) {
-            await bot.sendMessage(chatId, `✅ OTP sent to ${email}\n\nPlease verify using:\n\`/verify 123456\``, { parse_mode: "Markdown" });
+            await bot.sendMessage(chatId, `✅ **OTP Sent!** 📧\n\nPlease check your email (${email}) for the code.\n\nThen type:\n\`/verify <code>\``, { parse_mode: "Markdown" });
           } else {
             await bot.sendMessage(chatId, "❌ Failed to send email. Please try again later.");
           }
           return NextResponse.json({ success: true });
         }
 
+        // C. VERIFY COMMAND
         if (text && text.startsWith("/verify")) {
-          // কমান্ড: /verify 123456
-          const code = text.split(" ")[1];
+          const parts = text.split(" ");
+          const code = parts[1];
           
           if (!code) {
-            await bot.sendMessage(chatId, "⚠️ Please provide the code.\nExample: `/verify 123456`", { parse_mode: "Markdown" });
+            await bot.sendMessage(chatId, "⚠️ **Missing Code!**\n\nPlease type the OTP code.\nExample:\n`/verify 123456`", { parse_mode: "Markdown" });
             return NextResponse.json({ success: true });
           }
 
-          // কোড চেক করা
           const user = await User.findOne({ 
             otp: code, 
             otpExpiry: { $gt: Date.now() } 
           });
 
           if (!user) {
-            await bot.sendMessage(chatId, "❌ Invalid or expired code.");
+            await bot.sendMessage(chatId, "❌ **Invalid or Expired Code.**\nPlease try connecting again.");
             return NextResponse.json({ success: true });
           }
 
-          // কানেকশন সফল!
+          // কানেকশন সফল
           user.telegramChatId = chatId;
           user.otp = undefined;
           user.otpExpiry = undefined;
           await user.save();
 
-          await bot.sendMessage(chatId, `🎉 **Success!**\nYour Telegram is now connected to **${user.name}**.\n\nYou can now send Links or Screenshots to save jobs!`, { parse_mode: "Markdown" });
+          await bot.sendMessage(chatId, `🎉 **Connected Successfully!**\n\nWelcome, **${user.name}**! 🌟\n\nNow you can:\n🔗 Send **Job Links**\n📸 Send **Screenshots**\n📝 Send **Text Descriptions**\n\nI will organize everything in your dashboard.`, { parse_mode: "Markdown" });
           return NextResponse.json({ success: true });
         }
 
-        // অপরিচিত কাউকে ওয়ার্নিং দেওয়া
-        await bot.sendMessage(chatId, "🔒 **Access Denied**\n\nPlease connect your Job Hunter account first.\n\nType: `/connect your@email.com`", { parse_mode: "Markdown" });
+        // অপরিচিত মেসেজ ওয়ার্নিং
+        await bot.sendMessage(chatId, "🔒 **Login Required**\n\nPlease connect your account to start saving jobs.\n\nType: `/connect your@email.com`", { parse_mode: "Markdown" });
         return NextResponse.json({ success: true });
       }
 
-      // --- ✅ যদি কানেক্টেড থাকে (AUTHENTICATED FLOW) ---
+      // --- ✅ কানেক্টেড ইউজারদের জন্য (AUTHENTICATED FLOW) ---
       if (connectedUser) {
         
-        // ডিসকানেক্ট অপশন
+        // START COMMAND (For logged in users)
+        if (text === "/start") {
+          const msg = `
+👋 **Welcome Back, ${connectedUser.name}!**
+
+You are connected to: \`${connectedUser.email}\`
+
+🟢 **Ready to track!**
+Just send me a Link or Screenshot.
+
+📋 **Commands:**
+🔹 \`/today\` - Jobs saved today
+🔹 \`/myjobs\` - Last 5 jobs
+🔹 \`/me\` - Profile info
+🔹 \`/disconnect\` - Logout
+          `;
+          await bot.sendMessage(chatId, msg, { parse_mode: "Markdown" });
+          return NextResponse.json({ success: true });
+        }
+
+        // DISCONNECT
         if (text === "/disconnect") {
           connectedUser.telegramChatId = undefined;
           await connectedUser.save();
-          await bot.sendMessage(chatId, "Disconnected successfully. Bye! 👋");
+          await bot.sendMessage(chatId, "✅ **Disconnected.**\nSee you again! 👋", { parse_mode: "Markdown" });
           return NextResponse.json({ success: true });
         }
 
-        // প্রোফাইল চেক
+        // PROFILE INFO
         if (text === "/me") {
-          await bot.sendMessage(chatId, `👤 **Connected As:**\nName: ${connectedUser.name}\nEmail: ${connectedUser.email}`, { parse_mode: "Markdown" });
+          await bot.sendMessage(chatId, `👤 **Your Profile:**\n\nName: ${connectedUser.name}\nEmail: ${connectedUser.email}\nStatus: 🟢 Connected`, { parse_mode: "Markdown" });
           return NextResponse.json({ success: true });
         }
 
-        // --- জব প্রসেসিং (আগের লজিক + ইউজার ইমেইল) ---
+        // TODAY'S ACTIVITY
+        if (text === "/today") {
+          const start = new Date();
+          start.setHours(0,0,0,0);
+          const jobs = await Job.find({ userEmail: connectedUser.email, createdAt: { $gte: start } });
+          
+          if(jobs.length === 0) {
+            await bot.sendMessage(chatId, "📅 No jobs saved today. Keep hunting! 🦁");
+          } else {
+            let msg = `📅 **Saved Today (${jobs.length}):**\n`;
+            jobs.forEach(j => msg += `\n✅ ${j.title} \n   (${j.company})`);
+            await bot.sendMessage(chatId, msg);
+          }
+          return NextResponse.json({ success: true });
+        }
+
+        // RECENT JOBS
+        if (text === "/myjobs") {
+          const jobs = await Job.find({ userEmail: connectedUser.email }).sort({ createdAt: -1 }).limit(5);
+          if(jobs.length === 0) {
+            await bot.sendMessage(chatId, "📭 Your dashboard is empty.");
+          } else {
+            let msg = "📋 **Last 5 Jobs:**\n";
+            jobs.forEach((j, i) => msg += `\n${i+1}. **${j.title}** \n   🏢 ${j.company} | ${j.status}`);
+            await bot.sendMessage(chatId, msg, { parse_mode: "Markdown" });
+          }
+          return NextResponse.json({ success: true });
+        }
+
+        // --- JOB SAVING LOGIC ---
         if (photo || (text && !text.startsWith("/"))) {
-          await bot.sendMessage(chatId, "🔎 Analyzing... Please wait.");
+          await bot.sendMessage(chatId, "🔎 **Analyzing...** Please wait.");
           
           try {
             let jobData = {};
@@ -137,18 +213,17 @@ export async function POST(request) {
               jobData.platform = "Telegram Text";
             }
 
-            // ⚠️ মেইন কাজ: ইউজারের ইমেইল যোগ করা
             if (jobData) {
               const newJob = await Job.create({
                 ...jobData,
-                userEmail: connectedUser.email // এই জবের মালিক এই ইউজার
+                userEmail: connectedUser.email
               });
               
-              await bot.sendMessage(chatId, `✅ **Job Saved!**\n\n📌 ${newJob.title}\n🏢 ${newJob.company}\n📂 Saved to: ${connectedUser.email}`, { parse_mode: "Markdown" });
+              await bot.sendMessage(chatId, `✅ **Job Saved Successfully!**\n\n📌 **Title:** ${newJob.title}\n🏢 **Company:** ${newJob.company}\n🔗 **Platform:** ${newJob.platform}\n\nCheck your dashboard for details.`, { parse_mode: "Markdown" });
             }
           } catch (err) {
             console.error(err);
-            await bot.sendMessage(chatId, "⚠️ Error processing job. Please try again.");
+            await bot.sendMessage(chatId, "⚠️ **Error:** Could not process data. Please try again.");
           }
         }
       }
