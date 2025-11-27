@@ -219,7 +219,8 @@ Just send me a Link or Screenshot.
                 userEmail: connectedUser.email
               });
               
-              await bot.sendMessage(chatId, `✅ **Job Saved Successfully!**\n\n📌 **Title:** ${newJob.title}\n🏢 **Company:** ${newJob.company}\n🔗 **Platform:** ${newJob.platform}\n\nCheck your dashboard for details.`, { parse_mode: "Markdown" });
+              // ⚠️ মেসেজ আপডেট করা হয়েছে (ড্যাশবোর্ড লিংক সহ)
+              await bot.sendMessage(chatId, `✅ **Job Saved Successfully!**\n\n📌 **Title:** ${newJob.title}\n🏢 **Company:** ${newJob.company}\n🔗 **Platform:** ${newJob.platform}\n\n[Visit Dashboard ➡️](https://job-hunter-ai-lcq6.vercel.app/dashboard)`, { parse_mode: "Markdown", disable_web_page_preview: true });
             }
           } catch (err) {
             console.error(err);
