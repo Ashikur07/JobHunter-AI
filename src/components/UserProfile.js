@@ -68,45 +68,52 @@ export default function UserProfile({ session }) {
     <div className="w-full bg-gray-800/50 backdrop-blur-sm rounded-3xl border border-gray-700 shadow-2xl overflow-hidden animate-fadeIn">
       
       {/* --- Banner Image --- */}
-      <div className="h-40 bg-gradient-to-r from-blue-900 via-indigo-900 to-purple-900 relative">
+      <div className="h-32 md:h-40 bg-gradient-to-r from-blue-900 via-indigo-900 to-purple-900 relative">
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-30"></div>
       </div>
       
-      <div className="px-8 pb-10 relative">
+      <div className="px-4 md:px-8 pb-10 relative">
         
         {/* --- Header Section (Avatar & Actions) --- */}
-        <div className="flex flex-col md:flex-row justify-between items-end -mt-16 mb-8">
-          <div className="flex items-end gap-6">
-            <div className="relative group">
+        {/* Responsive Flex: Mobile -> Column, Desktop -> Row */}
+        <div className="flex flex-col md:flex-row justify-between items-center md:items-end -mt-12 md:-mt-16 mb-8 gap-4 md:gap-0">
+          
+          <div className="flex flex-col md:flex-row items-center gap-4 md:gap-6 text-center md:text-left w-full md:w-auto">
+            {/* Profile Image */}
+            <div className="relative group shrink-0">
               <img 
                 src={session?.user?.image || "https://via.placeholder.com/150"} 
                 alt="Profile" 
-                className="w-32 h-32 rounded-full border-4 border-gray-900 shadow-2xl object-cover bg-gray-800"
+                className="w-28 h-28 md:w-32 md:h-32 rounded-full border-4 border-gray-900 shadow-2xl object-cover bg-gray-800"
               />
               <div className="absolute bottom-2 right-2 bg-green-500 w-5 h-5 rounded-full border-4 border-gray-900"></div>
             </div>
-            <div className="mb-2">
-              <h2 className="text-3xl font-bold text-white">{session?.user?.name}</h2>
-              <p className="text-gray-400">{session?.user?.email}</p>
+            
+            {/* Name & Email */}
+            {/* md:pb-4 ensures it aligns with the bottom of the image if items-end, 
+                BUT for center alignment on large screens as requested, we use md:self-center md:pb-0 */}
+            <div className="md:self-center md:mt-4"> 
+              <h2 className="text-2xl md:text-3xl font-bold text-white leading-tight">{session?.user?.name}</h2>
+              <p className="text-gray-400 text-sm md:text-base">{session?.user?.email}</p>
             </div>
           </div>
 
           {/* Buttons */}
-          <div className="flex gap-3 mt-4 md:mt-0">
+          <div className="flex gap-3 mt-2 md:mt-0 w-full md:w-auto justify-center md:justify-end md:pb-2">
             {isEditing ? (
               <>
                 <button 
                   onClick={handleCancel}
-                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm bg-gray-700 hover:bg-gray-600 text-gray-300 transition"
+                  className="flex items-center gap-2 px-4 md:px-5 py-2 md:py-2.5 rounded-xl font-bold text-sm bg-gray-700 hover:bg-gray-600 text-gray-300 transition"
                 >
-                  <X size={16} /> Cancel
+                  <X size={16} /> <span className="hidden sm:inline">Cancel</span>
                 </button>
                 <button 
                   onClick={handleUpdate}
                   disabled={loading}
-                  className="flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/30 transition disabled:opacity-50"
+                  className="flex items-center gap-2 px-5 md:px-6 py-2 md:py-2.5 rounded-xl font-bold text-sm bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/30 transition disabled:opacity-50"
                 >
-                  <Save size={16} /> {loading ? "Saving..." : "Save Changes"}
+                  <Save size={16} /> {loading ? "Saving..." : "Save"}
                 </button>
               </>
             ) : (
@@ -121,63 +128,63 @@ export default function UserProfile({ session }) {
         </div>
 
         {/* --- Content Grid --- */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
           
           {/* Left Column: Bio & Personal Info */}
           <div className="lg:col-span-2 space-y-6">
             
             {/* Bio Section */}
-            <div className="bg-gray-900/50 p-6 rounded-2xl border border-gray-700/50">
+            <div className="bg-gray-900/50 p-5 md:p-6 rounded-2xl border border-gray-700/50">
               <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
                 <User size={18} className="text-blue-400"/> About Me
               </h3>
               {isEditing ? (
                 <textarea 
-                  className="w-full bg-gray-800 border border-gray-700 rounded-xl p-4 text-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition resize-none"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-xl p-4 text-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition resize-none text-sm md:text-base"
                   rows="4"
                   placeholder="Write a short professional bio..."
                   value={formData.bio}
                   onChange={(e) => setFormData({...formData, bio: e.target.value})}
                 />
               ) : (
-                <p className="text-gray-400 leading-relaxed">
+                <p className="text-gray-400 leading-relaxed text-sm md:text-base">
                   {formData.bio || "No bio added yet. Click edit to introduce yourself!"}
                 </p>
               )}
             </div>
 
             {/* Contact Details */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-gray-900/50 p-5 rounded-2xl border border-gray-700/50 flex items-center gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="bg-gray-900/50 p-4 md:p-5 rounded-2xl border border-gray-700/50 flex items-center gap-4">
                 <div className="bg-blue-500/10 p-3 rounded-full text-blue-400"><MapPin size={20} /></div>
-                <div className="flex-1">
+                <div className="flex-1 min-w-0"> {/* min-w-0 ensures truncation works */}
                   <label className="text-xs text-gray-500 uppercase font-bold">Location</label>
                   {isEditing ? (
                     <input type="text" className="w-full bg-transparent border-b border-gray-600 focus:border-blue-500 outline-none text-white text-sm py-1" 
                       placeholder="City, Country"
                       value={formData.location} onChange={(e) => setFormData({...formData, location: e.target.value})} />
-                  ) : (<p className="text-white font-medium">{formData.location || "N/A"}</p>)}
+                  ) : (<p className="text-white font-medium truncate">{formData.location || "N/A"}</p>)}
                 </div>
               </div>
 
-              <div className="bg-gray-900/50 p-5 rounded-2xl border border-gray-700/50 flex items-center gap-4">
+              <div className="bg-gray-900/50 p-4 md:p-5 rounded-2xl border border-gray-700/50 flex items-center gap-4">
                 <div className="bg-green-500/10 p-3 rounded-full text-green-400"><Phone size={20} /></div>
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <label className="text-xs text-gray-500 uppercase font-bold">Phone</label>
                   {isEditing ? (
                     <input type="text" className="w-full bg-transparent border-b border-gray-600 focus:border-green-500 outline-none text-white text-sm py-1" 
                       placeholder="+880 1XXX..."
                       value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} />
-                  ) : (<p className="text-white font-medium">{formData.phone || "N/A"}</p>)}
+                  ) : (<p className="text-white font-medium truncate">{formData.phone || "N/A"}</p>)}
                 </div>
               </div>
             </div>
           </div>
 
           {/* Right Column: Social Links */}
-          <div className="bg-gray-900/50 p-6 rounded-2xl border border-gray-700/50 h-fit">
+          <div className="bg-gray-900/50 p-5 md:p-6 rounded-2xl border border-gray-700/50 h-fit">
             <h3 className="text-lg font-bold text-white mb-6">Social Presence</h3>
-            <div className="space-y-5">
+            <div className="space-y-4">
               
               <SocialInput 
                 icon={<Linkedin size={18} />} color="text-blue-400" label="LinkedIn" 
@@ -216,10 +223,10 @@ export default function UserProfile({ session }) {
 function SocialInput({ icon, color, label, isEditing, value, onChange }) {
   return (
     <div className="flex items-center gap-3">
-      <div className={`p-2.5 rounded-lg bg-gray-800 border border-gray-700 ${color}`}>
+      <div className={`p-2.5 rounded-lg bg-gray-800 border border-gray-700 ${color} shrink-0`}>
         {icon}
       </div>
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden min-w-0">
         <label className="text-xs text-gray-500 block mb-0.5">{label}</label>
         {isEditing ? (
           <input 
