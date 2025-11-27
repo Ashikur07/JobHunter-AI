@@ -12,23 +12,38 @@ export async function GET(request) {
   }
 
   await dbConnect();
-
-  const user = await User.findOne({
+  // Try normal account verification token first
+  const userByVerify = await User.findOne({
     verifyToken: token,
     verifyTokenExpiry: { $gt: Date.now() },
   });
 
-  if (!user) {
-    // ⚠️ ফিক্স: কালো JSON স্ক্রিন না দেখিয়ে, লগ-ইন পেজে এরর মেসেজসহ পাঠাচ্ছি
-    return NextResponse.redirect(new URL("/signin?error=InvalidToken", request.url));
+  if (userByVerify) {
+    userByVerify.isVerified = true;
+    userByVerify.verifyToken = undefined;
+    userByVerify.verifyTokenExpiry = undefined;
+    await userByVerify.save();
+    return NextResponse.redirect(new URL("/signin?verified=true", request.url));
   }
 
-  // ভেরিফাই করা
-  user.isVerified = true;
-  user.verifyToken = undefined;
-  user.verifyTokenExpiry = undefined;
-  await user.save();
+  // If not an account verify token, check for Telegram connect token
+  const userByTelegram = await User.findOne({
+    telegramVerifyToken: token,
+    telegramVerifyExpiry: { $gt: Date.now() },
+  });
 
-  // সফল হলে লগ-ইন পেজে সাকসেস মেসেজসহ পাঠানো
-  return NextResponse.redirect(new URL("/signin?verified=true", request.url));
+  if (userByTelegram) {
+    // link telegram id from pending field
+    if (userByTelegram.telegramPendingChatId) {
+      userByTelegram.telegramId = userByTelegram.telegramPendingChatId;
+    }
+    userByTelegram.telegramVerifyToken = undefined;
+    userByTelegram.telegramVerifyExpiry = undefined;
+    userByTelegram.telegramPendingChatId = undefined;
+    await userByTelegram.save();
+    return NextResponse.redirect(new URL("/signin?connected=true", request.url));
+  }
+
+  // কোন টোকেনই মিলে না
+  return NextResponse.redirect(new URL("/signin?error=InvalidToken", request.url));
 }

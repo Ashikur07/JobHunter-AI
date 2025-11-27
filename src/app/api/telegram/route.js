@@ -4,8 +4,8 @@ import dbConnect from "@/lib/mongodb";
 import Job from "@/models/Job";
 import User from "@/models/User";
 import { extractJobData } from "@/lib/gemini";
-import { sendTelegramOTP } from "@/lib/mail"; // ইমেইল ফাংশন ইমপোর্ট
-
+import { sendTelegramVerification } from "@/lib/mail"; // ইমেইল ফাংশন ইমপোর্ট
+import crypto from "crypto";
 const token = process.env.TELEGRAM_BOT_TOKEN;
 const bot = new TelegramBot(token, { polling: false });
 
@@ -49,23 +49,21 @@ export async function POST(request) {
           return NextResponse.json({ success: true });
         }
 
-        // OTP জেনারেট করা (৬ ডিজিট)
-        const otp = Math.floor(100000 + Math.random() * 900000).toString();
-        
-        // ডাটাবেসে OTP সেভ করা (১০ মিনিট মেয়াদ)
-        existingUser.telegramVerifyCode = otp;
+        // Generate a secure token and save it with pending chat id
+        const tokenStr = crypto.randomBytes(20).toString("hex");
+
+        existingUser.telegramVerifyToken = tokenStr;
         existingUser.telegramVerifyExpiry = Date.now() + 10 * 60 * 1000;
-        // chatId টা টেম্পোরারি সেভ করতে পারো অথবা ভেরিফাইয়ের সময় আপডেট করতে পারো।
-        // আমরা ভেরিফাইয়ের সময় আপডেট করব।
+        existingUser.telegramPendingChatId = chatId;
         await existingUser.save();
 
-        // ইমেইল পাঠানো
-        const emailSent = await sendTelegramOTP(email, otp);
-        
+        // send verification email with token link
+        const emailSent = await sendTelegramVerification(email, tokenStr);
+
         if (emailSent) {
-          await bot.sendMessage(chatId, `✅ OTP sent to **${email}**.\n\nPlease check your email and type:\n\`/verify ${email} YOUR_CODE\``, { parse_mode: "Markdown" });
+          await bot.sendMessage(chatId, `✅ Verification email sent to **${email}**.\n\nPlease open your email and click the verification link to connect your Telegram bot.`, { parse_mode: "Markdown" });
         } else {
-          await bot.sendMessage(chatId, "❌ Failed to send email. Please try again later.");
+          await bot.sendMessage(chatId, "❌ Failed to send verification email. Please try again later.");
         }
         return NextResponse.json({ success: true });
       }
@@ -81,6 +79,29 @@ export async function POST(request) {
           return NextResponse.json({ success: true });
         }
 
+        // First try token-based verification (if user pasted token)
+        const pendingUserByToken = await User.findOne({
+          email: email,
+          telegramVerifyToken: code,
+          telegramVerifyExpiry: { $gt: Date.now() }
+        });
+
+        if (pendingUserByToken) {
+          if (pendingUserByToken.telegramPendingChatId) {
+            pendingUserByToken.telegramId = pendingUserByToken.telegramPendingChatId;
+          } else {
+            pendingUserByToken.telegramId = chatId;
+          }
+          pendingUserByToken.telegramVerifyToken = undefined;
+          pendingUserByToken.telegramVerifyExpiry = undefined;
+          pendingUserByToken.telegramPendingChatId = undefined;
+          await pendingUserByToken.save();
+
+          await bot.sendMessage(chatId, "🎉 **Account Connected Successfully via token!**\nNow you can send me job links or screenshots to save directly to your dashboard.", { parse_mode: "Markdown" });
+          return NextResponse.json({ success: true });
+        }
+
+        // Fallback: OTP code flow (legacy)
         const pendingUser = await User.findOne({ 
           email: email,
           telegramVerifyCode: code,
@@ -92,7 +113,7 @@ export async function POST(request) {
           return NextResponse.json({ success: true });
         }
 
-        // সফল ভেরিফিকেশন
+        // সফল ভেরিফিকেশন (OTP)
         pendingUser.telegramId = chatId; // টেলিগ্রাম আইডি লিংক করে দিলাম
         pendingUser.telegramVerifyCode = undefined;
         pendingUser.telegramVerifyExpiry = undefined;

@@ -21,6 +21,8 @@ const UserSchema = new mongoose.Schema({
   telegramId: { type: String }, // ইউজারের টেলিগ্রাম আইডি
   telegramVerifyCode: { type: String }, // ভেরিফিকেশন কোড (OTP)
   telegramVerifyExpiry: { type: Date }, // কোডের মেয়াদ
+  telegramVerifyToken: { type: String }, // token-based verification for email link
+  telegramPendingChatId: { type: String }, // temporary store chat id until verification
 
   // ওয়েবসাইট ভেরিফিকেশন
   isVerified: { type: Boolean, default: false },
