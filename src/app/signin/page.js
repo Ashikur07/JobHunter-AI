@@ -1,18 +1,17 @@
 "use client";
 import { signIn } from "next-auth/react";
-import { useState } from "react";
+import { useState, Suspense } from "react"; // Suspense যোগ করা হয়েছে
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Eye, EyeOff } from "lucide-react"; // আইকন ইমপোর্ট
 
-// Lucide Icons
-import { Eye, EyeOff, ArrowLeft } from "lucide-react";
-
-export default function SignIn() {
+// মেইন ফর্ম কম্পোনেন্ট (আলাদা করা হয়েছে Suspense এর জন্য)
+function SignInForm() {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [formError, setFormError] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
+  const [showPassword, setShowPassword] = useState(false); // পাসওয়ার্ড দেখার স্টেট
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -46,34 +45,25 @@ export default function SignIn() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-900 p-4">
-      <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-8 animate-fadeIn relative">
+      <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-8 animate-fadeIn">
         
-        {/* 🔙 BACK BUTTON */}
-        <button
-          onClick={() => router.push("/")}
-          className="absolute top-4 left-4 text-gray-700 hover:text-blue-600 transition"
-        >
-          <ArrowLeft className="h-6 w-6" />
-        </button>
-
-        <div className="text-center mb-6 mt-4">
+        <div className="text-center mb-6">
           <h1 className="text-3xl font-bold text-gray-800">Welcome Back</h1>
           <p className="text-gray-500 text-sm mt-2">Sign in to manage your job applications</p>
         </div>
 
-        {/* ALERTS */}
+        {/* --- ALERTS SECTION --- */}
         {isVerified && (
-          <div className="bg-green-100 text-green-700 p-3 rounded-lg mb-4 text-sm text-center border border-green-200">
-            ✅ Email verified successfully! You can now log in.
+          <div className="bg-green-100 text-green-700 p-3 rounded-lg mb-4 text-sm text-center border border-green-200 flex items-center justify-center gap-2">
+            ✅ <span>Email verified successfully! You can now log in.</span>
           </div>
         )}
 
         {urlError === "InvalidToken" && (
           <div className="bg-yellow-100 text-yellow-700 p-3 rounded-lg mb-4 text-sm text-center border border-yellow-200">
-            ⚠️ Verification link expired or already used.
+            ⚠️ Verification link expired or already used. Please try logging in.
           </div>
         )}
-
         {urlError === "TokenMissing" && (
           <div className="bg-red-100 text-red-700 p-3 rounded-lg mb-4 text-sm text-center border border-red-200">
             ❌ Invalid verification link.
@@ -86,7 +76,7 @@ export default function SignIn() {
           </div>
         )}
 
-        {/* GOOGLE LOGIN */}
+        {/* --- GOOGLE BUTTON --- */}
         <button
           onClick={handleGoogleLogin}
           disabled={loading}
@@ -102,9 +92,8 @@ export default function SignIn() {
           <div className="flex-1 h-px bg-gray-300"></div>
         </div>
 
-        {/* EMAIL FORM */}
+        {/* --- EMAIL FORM --- */}
         <form className="space-y-4" onSubmit={handleEmailLogin}>
-          {/* Email  */}
           <div>
             <label className="block text-gray-700 text-sm font-bold mb-1">Email Address</label>
             <input
@@ -116,30 +105,29 @@ export default function SignIn() {
               required
             />
           </div>
-
-          {/* Password */}
-          <div className="relative">
+          
+          {/* পাসওয়ার্ড ফিল্ড (আইকন সহ) */}
+          <div>
             <label className="block text-gray-700 text-sm font-bold mb-1">Password</label>
-
-            <input
-              type={showPassword ? "text" : "password"}
-              placeholder="Enter password"
-              className="w-full p-3 pr-12 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-800 transition"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-
-            {/* Eye Icon */}
-            <span
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-[42px] cursor-pointer text-gray-600"
-            >
-              {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-            </span>
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"} // টাইপ টগল হবে
+                placeholder="Enter password"
+                className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-800 transition pr-10"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-3.5 text-gray-500 hover:text-gray-700 transition"
+              >
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
           </div>
-
-          {/* Submit */}
+          
           <button
             type="submit"
             disabled={loading}
@@ -149,7 +137,7 @@ export default function SignIn() {
           </button>
         </form>
 
-        {/* Footer */}
+        {/* --- FOOTER LINKS --- */}
         <div className="mt-6 text-center flex justify-between text-sm">
           <a href="#" className="text-blue-600 hover:underline">Forgot password?</a>
           <Link href="/register" className="text-gray-600 hover:text-blue-600 font-semibold">
@@ -158,5 +146,14 @@ export default function SignIn() {
         </div>
       </div>
     </div>
+  );
+}
+
+// ⚠️ বিল্ড এরর ফিক্স করার জন্য Suspense ব্যবহার করা হয়েছে
+export default function SignIn() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-gray-900 text-white">Loading...</div>}>
+      <SignInForm />
+    </Suspense>
   );
 }
