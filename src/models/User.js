@@ -1,15 +1,18 @@
+// src/models/User.js
 import mongoose from 'mongoose';
 
 const UserSchema = new mongoose.Schema({
+  // --- Basic Info ---
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   password: { type: String },
   image: { type: String },
   
-  // প্রোফাইল ইনফো
+  // --- Profile Info ---
   bio: { type: String, default: "" },
   location: { type: String, default: "" },
   phone: { type: String, default: "" },
+  
   links: {
     linkedin: { type: String, default: "" },
     github: { type: String, default: "" },
@@ -17,17 +20,15 @@ const UserSchema = new mongoose.Schema({
     facebook: { type: String, default: "" }
   },
 
-  // --- TELEGRAM BOT FIELDS (নতুন যোগ করা হলো) ---
-  telegramId: { type: String }, // ইউজারের টেলিগ্রাম আইডি
-  telegramVerifyCode: { type: String }, // ভেরিফিকেশন কোড (OTP)
-  telegramVerifyExpiry: { type: Date }, // কোডের মেয়াদ
-  telegramVerifyToken: { type: String }, // token-based verification for email link
-  telegramPendingChatId: { type: String }, // temporary store chat id until verification
-
-  // ওয়েবসাইট ভেরিফিকেশন
+  // --- Verification Info ---
   isVerified: { type: Boolean, default: false },
   verifyToken: { type: String },
   verifyTokenExpiry: { type: Date },
+
+  // --- Telegram Integration (NEW) ---
+  telegramChatId: { type: String }, // কানেক্টেড টেলিগ্রাম আইডি
+  otp: { type: String },            // ভেরিফিকেশন কোড
+  otpExpiry: { type: Date },        // কোডের মেয়াদ
 
   createdAt: { type: Date, default: Date.now },
 });
