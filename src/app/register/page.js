@@ -1,11 +1,11 @@
 "use client";
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { signIn } from "next-auth/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Eye, EyeOff, ArrowLeft } from "lucide-react"; // আইকন ইমপোর্ট
+import { Eye, EyeOff, ArrowLeft, Mail, Lock, User, UserPlus } from "lucide-react";
 
-export default function Register() {
+function RegisterForm() {
   const [form, setForm] = useState({ name: "", email: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -40,100 +40,183 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-900 p-4">
-      <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-8 animate-fadeIn relative">
-
-        {/* 🔙 BACK BUTTON (Home Page এ ফেরার জন্য) */}
-        <button
-          onClick={() => router.push("/")}
-          className="absolute top-4 left-4 text-gray-700 hover:text-blue-600 transition"
-        >
-          <ArrowLeft className="h-6 w-6" />
-        </button>
-
-        <div className="text-center mb-6 mt-4">
-          <h1 className="text-3xl font-bold text-gray-800">Create Account</h1>
-          <p className="text-gray-500 text-sm mt-2">Register with email to get started</p>
-        </div>
-
-        {/* Google Button */}
-        <button
-          onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
-          className="w-full flex items-center justify-center gap-3 border border-gray-300 py-3 rounded-lg hover:bg-gray-50 transition text-gray-700 font-semibold"
-        >
-          <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="h-6 w-6" alt="Google" />
-          Sign up with Google
-        </button>
-
-        <div className="flex items-center my-6">
-          <div className="flex-1 h-px bg-gray-300"></div>
-          <span className="px-3 text-gray-400 text-sm">or</span>
-          <div className="flex-1 h-px bg-gray-300"></div>
-        </div>
-
-        {/* Error Message */}
-        {error && <p className="text-red-500 text-sm text-center mb-4">{error}</p>}
-
-        {/* Register Form */}
-        <form className="space-y-4" onSubmit={handleSubmit}>
-          <div>
-            <label className="block text-gray-700 text-sm font-bold mb-1">Full Name</label>
-            <input
-              type="text"
-              placeholder="Your Name"
-              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-800"
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              required
+    <div className="min-h-screen bg-[#0f172a] text-white font-sans flex items-center justify-center p-4 md:p-0">
+      
+      <div className="w-full max-w-5xl bg-gray-800/30 rounded-3xl border border-gray-700 shadow-2xl overflow-hidden flex flex-col md:flex-row animate-fadeIn h-[700px]"> 
+        
+        {/* --- LEFT SIDE: Image Banner (Hidden on Mobile) --- */}
+        <div className="hidden md:flex flex-1 relative overflow-hidden">
+            
+            {/* Background Image */}
+            <img 
+              src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=2071&auto=format&fit=crop" 
+              alt="Team working" 
+              className="absolute inset-0 w-full h-full object-cover"
             />
-          </div>
+            
+            {/* Gradient Overlay */}
+            <div className="absolute inset-0 bg-gradient-to-br from-purple-600/90 to-blue-900/90 mix-blend-multiply"></div>
+            
+            {/* Content */}
+            <div className="relative z-10 w-full h-full flex flex-col justify-between p-12 text-white">
+                <div>
+                    <div className="flex items-center gap-2 mb-2">
+                        <span className="bg-white/20 p-2 rounded-lg backdrop-blur-sm">
+                            <UserPlus size={24} className="text-white" />
+                        </span>
+                        <h2 className="text-2xl font-extrabold tracking-wide">JobHunter AI</h2>
+                    </div>
+                    <p className="text-purple-100 text-sm opacity-90 ml-1">Join the community.</p>
+                </div>
 
-          <div>
-            <label className="block text-gray-700 text-sm font-bold mb-1">Email Address</label>
-            <input
-              type="email"
-              placeholder="you@example.com"
-              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-800"
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-              required
-            />
-          </div>
+                <div className="space-y-4">
+                    <h1 className="text-5xl font-bold leading-tight drop-shadow-lg">
+                    Start Your <br/> Journey!
+                    </h1>
+                    <p className="text-purple-100 text-lg max-w-sm leading-relaxed drop-shadow-md">
+                    Create an account to unlock powerful tracking tools, AI insights, and land your dream job faster.
+                    </p>
+                </div>
 
-          {/* Password with Eye Toggle */}
-          <div>
-            <label className="block text-gray-700 text-sm font-bold mb-1">Password</label>
-            <div className="relative">
-              <input
-                type={showPassword ? "text" : "password"}
-                placeholder="Create a strong password"
-                className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-800 pr-10"
-                onChange={(e) => setForm({ ...form, password: e.target.value })}
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-              >
-                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-              </button>
+                <div className="text-xs text-purple-200 opacity-70">
+                    &copy; {new Date().getFullYear()} JobHunter AI. All rights reserved.
+                </div>
             </div>
-          </div>
+        </div>
 
-          <button
-            disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition shadow-lg disabled:opacity-50"
-          >
-            {loading ? "Creating Account..." : "Sign Up Free"}
-          </button>
-        </form>
+        {/* --- RIGHT SIDE: Register Form --- */}
+        <div className="flex-1 bg-gray-900 flex flex-col justify-center relative p-8 md:p-12 overflow-y-auto">
+            
+            {/* Back Button */}
+            <button
+              onClick={() => router.push("/")}
+              className="absolute top-6 left-6 text-gray-500 hover:text-white transition flex items-center gap-2 text-sm font-medium group z-20"
+            >
+              <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition" /> Back
+            </button>
 
-        <div className="mt-6 text-center text-sm">
-          <span className="text-gray-500">Already have an account? </span>
-          <Link href="/signin" className="text-blue-600 hover:underline font-semibold">
-            Login here
-          </Link>
+            <div className="max-w-sm mx-auto w-full mt-6">
+                <div className="text-center mb-8">
+                    <h2 className="text-3xl font-bold text-white mb-2">Create Account</h2>
+                    <p className="text-gray-400 text-sm">Join us today! It takes only a few steps.</p>
+                </div>
+
+                {/* Error Message */}
+                {error && (
+                    <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-3 rounded-xl text-xs text-center mb-6 flex items-center justify-center gap-2">
+                        ⚠️ <span>{error}</span>
+                    </div>
+                )}
+
+                {/* Google Button */}
+                <button
+                    onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
+                    className="w-full bg-white hover:bg-gray-100 text-gray-900 font-bold py-3 rounded-xl transition flex items-center justify-center gap-3 shadow-md transform active:scale-[0.98] text-sm"
+                >
+                    <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="h-5 w-5" alt="Google" />
+                    <span>Sign up with Google</span>
+                </button>
+
+                <div className="relative my-6">
+                    <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t border-gray-800"></div>
+                    </div>
+                    <div className="relative flex justify-center text-xs">
+                        <span className="px-3 bg-gray-900 text-gray-500 uppercase">Or register with email</span>
+                    </div>
+                </div>
+
+                {/* Registration Form */}
+                <form className="space-y-4" onSubmit={handleSubmit}>
+                    
+                    {/* Name Input */}
+                    <div className="space-y-1.5">
+                        <label className="block text-xs font-semibold text-gray-400 ml-1">Full Name</label>
+                        <div className="relative group">
+                            <User className="absolute left-3.5 top-3 h-4 w-4 text-gray-500 group-focus-within:text-purple-500 transition-colors" />
+                            <input
+                                type="text"
+                                placeholder="John Doe"
+                                className="w-full bg-gray-800 border border-gray-700 rounded-xl py-2.5 pl-10 pr-4 text-white text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 transition-all"
+                                onChange={(e) => setForm({...form, name: e.target.value})}
+                                required
+                            />
+                        </div>
+                    </div>
+
+                    {/* Email Input */}
+                    <div className="space-y-1.5">
+                        <label className="block text-xs font-semibold text-gray-400 ml-1">Email Address</label>
+                        <div className="relative group">
+                            <Mail className="absolute left-3.5 top-3 h-4 w-4 text-gray-500 group-focus-within:text-purple-500 transition-colors" />
+                            <input
+                                type="email"
+                                placeholder="name@example.com"
+                                className="w-full bg-gray-800 border border-gray-700 rounded-xl py-2.5 pl-10 pr-4 text-white text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 transition-all"
+                                onChange={(e) => setForm({...form, email: e.target.value})}
+                                required
+                            />
+                        </div>
+                    </div>
+                    
+                    {/* Password Input */}
+                    <div className="space-y-1.5">
+                        <label className="block text-xs font-semibold text-gray-400 ml-1">Password</label>
+                        <div className="relative group">
+                            <Lock className="absolute left-3.5 top-3 h-4 w-4 text-gray-500 group-focus-within:text-purple-500 transition-colors" />
+                            <input
+                                type={showPassword ? "text" : "password"}
+                                placeholder="Create a strong password"
+                                className="w-full bg-gray-800 border border-gray-700 rounded-xl py-2.5 pl-10 pr-10 text-white text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 transition-all"
+                                onChange={(e) => setForm({...form, password: e.target.value})}
+                                required
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute right-3 top-3 text-gray-500 hover:text-white transition focus:outline-none"
+                            >
+                                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white font-bold py-3 rounded-xl transition shadow-lg shadow-purple-500/20 disabled:opacity-50 disabled:cursor-not-allowed transform active:scale-[0.98] mt-2 text-sm"
+                    >
+                        {loading ? "Creating Account..." : "Sign Up Free"}
+                    </button>
+                </form>
+
+                <div className="mt-6 text-center">
+                    <p className="text-gray-500 text-xs">
+                        Already have an account?{" "}
+                        <Link href="/signin" className="text-purple-400 hover:text-purple-300 font-bold hover:underline transition">
+                            Log in here
+                        </Link>
+                    </p>
+                </div>
+
+            </div>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function Register() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#0f172a] flex items-center justify-center text-white">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-10 h-10 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-gray-500 text-sm animate-pulse">Loading...</p>
+        </div>
+      </div>
+    }>
+      <RegisterForm />
+    </Suspense>
   );
 }
